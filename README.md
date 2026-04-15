@@ -1,6 +1,6 @@
 # Image Management Program
 MFC 기반 이미지 관리 프로그램.  
-개발했던 이미지 처리 api 서버를 활용하는 cpp라이브러리를 활용하여 간단한 이미지 관리 프로그램 개발
+개발했던 이미지 처리 [api 서버](https://github.com/seje06/cv-api_project/blob/main/README.md)를 활용하는 [cpp라이브러리](https://github.com/seje06/cv_api_cpp_sdk/blob/main/README.md)를 활용하여 간단한 이미지 관리 프로그램 개발
 
 ---
 
