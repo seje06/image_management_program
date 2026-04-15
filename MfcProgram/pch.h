@@ -17,8 +17,14 @@
 //#pragma comment(lib,"mysqlcppconnx.lib")
 
 // cv api cpp sdk 관련
-#pragma comment(lib,"Debug\\ImageApiSdk.lib")
-#pragma comment(lib,"Debug\\libcurl-d.lib")
-#pragma comment(lib,"Debug\\zlibd.lib")
+#ifdef _DEBUG
+#pragma comment(lib, "Debug\\ImageApiSdk.lib")
+#pragma comment(lib, "Debug\\libcurl-d.lib")
+#pragma comment(lib, "Debug\\zlibd.lib")
+#else
+#pragma comment(lib, "Release\\ImageApiSdk.lib")
+#pragma comment(lib, "Release\\libcurl.lib")
+#pragma comment(lib, "Release\\zlib.lib")
+#endif
 
 #endif //PCH_H

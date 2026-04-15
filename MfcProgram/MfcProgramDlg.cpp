@@ -179,17 +179,25 @@ BOOL CMfcProgramDlg::OnInitDialog()
     InitializeListControl();
     InitializeDefaultValues();
     SetStatusText(L"상태: 준비");
-    ClearResultImage();
 
-    CString debugInfo;
-    debugInfo.Format(
-        L"[DB CONFIG] host=%S, port=%d, user=%S, database=%S\n",
-        _dbConfig.host.c_str(),
-        _dbConfig.port,
-        _dbConfig.user.c_str(),
-        _dbConfig.database.c_str()
+    // 결과 이미지 컨트롤을 리소스에서 만든 걸 그대로 쓰지 않고
+    // 코드에서 다시 생성해서 크기/스타일 문제를 우회한다.
+    if (_staticResultImage.GetSafeHwnd() != nullptr)
+    {
+        _staticResultImage.DestroyWindow();
+    }
+
+    CRect imageRect(660, 140, 880, 360); // left, top, right, bottom
+
+    _staticResultImage.Create(
+        L"",
+        WS_CHILD | WS_VISIBLE | SS_BITMAP | SS_CENTERIMAGE,
+        imageRect,
+        this,
+        IDC_STATIC_RESULT_IMAGE
     );
-    OutputDebugString(debugInfo);
+
+    ClearResultImage();
 
     std::string error;
 
@@ -456,6 +464,12 @@ void CMfcProgramDlg::ClearResultImage()
 */
 void CMfcProgramDlg::ShowImageInControl(const CString& imagePath, CStatic& targetControl, HBITMAP& bitmapHandle)
 {
+    if (targetControl.GetSafeHwnd() == nullptr)
+    {
+        AfxMessageBox(L"이미지 표시 컨트롤 HWND가 유효하지 않음.");
+        return;
+    }
+
     if (::PathFileExists(imagePath) == FALSE)
     {
         AfxMessageBox(L"이미지 파일을 찾을 수 없음.");
@@ -471,20 +485,23 @@ void CMfcProgramDlg::ShowImageInControl(const CString& imagePath, CStatic& targe
         return;
     }
 
-    // Picture Control 내부 크기 얻기
     CRect rect;
-    targetControl.GetClientRect(&rect);
+    targetControl.GetWindowRect(&rect);
 
     int controlWidth = rect.Width();
     int controlHeight = rect.Height();
 
     if (controlWidth <= 0 || controlHeight <= 0)
     {
-        AfxMessageBox(L"이미지 표시 영역 크기가 올바르지 않음.");
+        CString msg;
+        msg.Format(
+            L"이미지 표시 영역 크기가 올바르지 않음.\nwindow width=%d height=%d",
+            controlWidth, controlHeight
+        );
+        AfxMessageBox(msg);
         return;
     }
 
-    // 컨트롤 DC 얻기
     CDC* dc = targetControl.GetDC();
     if (dc == nullptr)
     {
@@ -492,17 +509,14 @@ void CMfcProgramDlg::ShowImageInControl(const CString& imagePath, CStatic& targe
         return;
     }
 
-    // 메모리 DC 생성
     CDC memDC;
     memDC.CreateCompatibleDC(dc);
 
-    // Picture Control 크기와 같은 비트맵 생성
     CBitmap bitmap;
     bitmap.CreateCompatibleBitmap(dc, controlWidth, controlHeight);
 
     CBitmap* oldBitmap = memDC.SelectObject(&bitmap);
 
-    // 흰 배경 채우기
     memDC.FillSolidRect(0, 0, controlWidth, controlHeight, RGB(255, 255, 255));
 
     int imageWidth = image.GetWidth();
@@ -516,13 +530,6 @@ void CMfcProgramDlg::ShowImageInControl(const CString& imagePath, CStatic& targe
         return;
     }
 
-    /*
-        --------------------------------------------------------------------
-        비율 유지 리사이즈 계산
-        --------------------------------------------------------------------
-        Picture Control 안에 이미지를 넣되,
-        찌그러지지 않도록 가로/세로 비율 유지
-    */
     double scaleX = static_cast<double>(controlWidth) / static_cast<double>(imageWidth);
     double scaleY = static_cast<double>(controlHeight) / static_cast<double>(imageHeight);
     double scale = min(scaleX, scaleY);
@@ -530,31 +537,26 @@ void CMfcProgramDlg::ShowImageInControl(const CString& imagePath, CStatic& targe
     int drawWidth = static_cast<int>(imageWidth * scale);
     int drawHeight = static_cast<int>(imageHeight * scale);
 
-    // 가운데 정렬을 위한 오프셋
     int offsetX = (controlWidth - drawWidth) / 2;
     int offsetY = (controlHeight - drawHeight) / 2;
 
-    // 확대/축소 품질 향상
     ::SetStretchBltMode(memDC.GetSafeHdc(), HALFTONE);
-
-    // 실제 이미지 그리기
     image.Draw(memDC.GetSafeHdc(), offsetX, offsetY, drawWidth, drawHeight);
 
-    // 이전 비트맵 해제
     if (bitmapHandle != nullptr)
     {
         ::DeleteObject(bitmapHandle);
         bitmapHandle = nullptr;
     }
 
-    // 새 비트맵을 Picture Control에 연결하기 위해 HBITMAP 분리
     bitmapHandle = (HBITMAP)bitmap.Detach();
-
     targetControl.SetBitmap(bitmapHandle);
 
-    // DC 정리
     memDC.SelectObject(oldBitmap);
     targetControl.ReleaseDC(dc);
+
+    targetControl.Invalidate();
+    targetControl.UpdateWindow();
 }
 
 /*
